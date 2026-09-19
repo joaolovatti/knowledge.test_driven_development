@@ -477,3 +477,109 @@ Beyond coding assistants, AI is valuable for optimizing continuous integration. 
 ## Remember
 
 > An AI-generated test written after the code proves only that the code does what it does, not what it should do; the requirement has to come from you, first.
+
+# Test-Driven Development in Practice
+
+*Write the failing test first, pass it minimally, then refactor safely.*
+
+## In short
+
+- In TDD, tests drive the code: every line of implementation answers a test that failed first.
+- The cycle is **red-green-refactor**: write a failing test, make it pass with minimal code, then improve the design.
+- A good unit test checks one small unit in isolation, covering the happy path and the edge cases.
+- Arrange, Act, Assert gives each test a clear beginning, middle and end.
+- Refactoring changes structure, never behavior, and tests are the safety net that makes it safe.
+
+## Unit tests and isolation
+
+A **unit** is a small piece of code with one responsibility and no dependencies, for example a function that formats a first and last name.
+
+A good **unit test** has three qualities:
+
+- It checks behavior. Assertions compare the actual output with the exact expected output for given inputs.
+- It runs in **isolation**. It needs no database, API or network, so it is self-contained, fast and reliable.
+- It uses clear assertions. **pytest** lets you write plain `assert` statements.
+
+Cover two kinds of cases. The **happy path** is the input that works as expected. The **edge case** is unusual input, such as empty strings or a negative amount.
+
+## Arrange, Act, Assert
+
+**Arrange, Act, Assert (AAA)** structures multi-step tests so the purpose is clear and failures are easy to diagnose. The framework does not enforce it; you choose it for readability.
+
+- **Arrange**: prepare what the test needs, such as data, collaborators, test doubles or environment. Use **fixtures** to handle repetitive setup. Skip this step when there is nothing to prepare.
+- **Act**: perform the single action under test, such as calling a function or method. If you are doing two things, write two tests.
+- **Assert**: define success with a direct check so failures are obvious.
+
+Multiple assertions are fine when they describe one outcome, for example status code 201 and the order ID after an API call. But pytest stops at the first failing assert, so split tests when you need independent failure signals.
+
+## The red-green-refactor cycle
+
+### Red
+
+Write the test before the code exists. Name test files and test functions with the `test_` prefix, because pytest discovers them automatically. Keep tests in a separate file and name each one after the scenario and expected behavior.
+
+The test fails, often with an `ImportError` because the function does not exist yet. This failure is a success: it proves the test works and tells you what to build next.
+
+### Green
+
+Write the minimum code that makes the test pass, even a hardcoded return value. Elegance does not matter yet. Reaching green quickly confirms the test is valid.
+
+### Refactor
+
+With a passing test, improve the code's structure without changing its behavior. Rerun the tests after every change. Green tests prove no regressions.
+
+## Refactoring toward better design
+
+A first step may replace a hardcoded result with real logic held in a **global variable**. That is quick and dirty: global state causes unexpected behavior, is hard to debug and prevents testing in isolation.
+
+The standard fix is **encapsulation**: move data and logic into a class. Each instance keeps its own state, so each test can use a fresh instance without interference.
+
+This change is itself driven by a test that shows the intended usage: create an instance in Arrange, call a method in Act, check an instance attribute in Assert. It fails against the old code until you refactor.
+
+Refactoring never adds features; it keeps the code healthy over time.
+
+## Growing the test suite
+
+One scenario is not enough. Expand the suite deliberately:
+
+- Add more complex happy paths, such as several inputs whose results must aggregate correctly.
+- Add edge cases for invalid input and decide the expected behavior, such as raising a `ValueError`.
+- Each new test starts red while existing ones stay green; then add just enough code to pass.
+
+New features follow the same loop. Write a test describing the intended behavior, watch it fail, then write just enough code to pass. When the data model changes, a derived value can become a **property** computed from stored records, so it is always up to date.
+
+## Quick reference
+
+| Term | Meaning |
+|---|---|
+| Unit | Small piece of code with one job and no outside dependencies |
+| Isolation | Testing a unit without databases, APIs or networks |
+| Happy path | Input where everything works as expected |
+| Edge case | Unusual or invalid input, such as empty or negative values |
+| Red | Write a test that fails because the feature does not exist |
+| Green | Write the minimum code to make the failing test pass |
+| Refactor | Improve structure without changing behavior, tests stay green |
+| Arrange | Set up data, collaborators and environment |
+| Act | Perform one action under test |
+| Assert | Check the outcome with a direct comparison |
+| `test_` prefix | Naming convention pytest uses to discover tests |
+| Fixture | Reusable setup that keeps Arrange small |
+
+## Example
+
+This example applies the red-green-refactor cycle, AAA and encapsulation to a small expense tracker, with application code in `tracker.py` and tests in `test_tracker.py`.
+
+```bash
+python -m pytest
+```
+
+- Red: a test calls `add_expense` before it exists, so the run fails with `ImportError`.
+- Green: `add_expense` first just returns 10, the minimum that passes.
+- Refactor: the hardcoded value becomes a running total in a global variable, then an `ExpenseTracker` class whose instance holds its own total. This is encapsulation replacing global state.
+- Growing the suite: a test for multiple expenses checks aggregation, and a test for a negative amount expects a `ValueError`. An `if amount is less than or equal to zero` check turns it green.
+- New feature: expenses become dictionaries with `amount` and `category` stored in `self.expenses`, `total` becomes a property that sums the amounts, and `get_expenses_by_category` returns only matching expenses.
+
+## Remember
+
+> A failing test in the red phase is a success: it proves the test works and tells you what to build next.
+
